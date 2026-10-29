@@ -19,6 +19,7 @@ namespace FrostTodo {
  public sealed class MainWindow:Window {
   readonly Store store; AppData data; readonly Grid layout=new Grid();readonly Border surface=new Border();readonly Grid root=new Grid();
   readonly BackgroundPictureLayer backgroundPicture=new BackgroundPictureLayer();
+  readonly TaskReorderController taskSort;
   readonly StackPanel top=new StackPanel();readonly ScrollViewer scroll=new ScrollViewer();readonly StackPanel body=new StackPanel();readonly Grid foot=new Grid();
   readonly Border toastBorder=new Border(); readonly TextBlock toastText=Ui.Text("",11.5,false);readonly Button undoButton;
   readonly DispatcherTimer saveTimer=new DispatcherTimer();readonly DispatcherTimer reminderTimer=new DispatcherTimer();readonly DispatcherTimer toastTimer=new DispatcherTimer();
@@ -49,16 +50,17 @@ namespace FrostTodo {
    AddResizeEdge(HorizontalAlignment.Stretch,VerticalAlignment.Bottom,Cursors.SizeNS,Double.NaN,6,delegate(double dx,double dy){Height=Math.Max(MinHeight,Math.Min(MaxHeight,Height+dy));});
    StackPanel message=new StackPanel{Orientation=Orientation.Horizontal};message.Children.Add(toastText);undoButton=Ui.Button("撤销",delegate{if(undoAction!=null)undoAction();HideToast();});undoButton.Margin=new Thickness(10,-5,-5,-5);message.Children.Add(undoButton);
    toastBorder.Child=message;toastBorder.Background=Ui.Brush("#F0F4F8");toastBorder.BorderBrush=Ui.Brush("#CCD5DF");toastBorder.BorderThickness=new Thickness(1);toastBorder.CornerRadius=new CornerRadius(10);toastBorder.Padding=new Thickness(11,9,11,9);toastBorder.HorizontalAlignment=HorizontalAlignment.Center;toastBorder.VerticalAlignment=VerticalAlignment.Bottom;toastBorder.Margin=new Thickness(12,0,12,48);toastBorder.Visibility=Visibility.Collapsed;root.Children.Add(toastBorder);
+   taskSort=new TaskReorderController(root,scroll,ReorderTask);
    saveTimer.Interval=TimeSpan.FromMilliseconds(450);saveTimer.Tick+=delegate{saveTimer.Stop();SaveNow();};
    reminderTimer.Interval=TimeSpan.FromSeconds(5);reminderTimer.Tick+=delegate{if(displayedDay!=DateTime.Today){displayedDay=DateTime.Today;if(page=="main")Render();}if(dot!=null)dot.Refresh();CheckReminders();};
    toastTimer.Interval=TimeSpan.FromSeconds(7);toastTimer.Tick+=delegate{HideToast();};
    SourceInitialized+=SourceReady;Loaded+=delegate{initializing=false;ApplyAppearance();ApplyMode();Render();reminderTimer.Start();CheckReminders();};
    SizeChanged+=delegate{if(!initializing){data.Settings.Width=Width;data.Settings.Height=Height;ScheduleSave();}};
-   Activated+=delegate{if(!isMovingWindow)ApplyAppearance();if(!initializing&&!isMovingWindow&&data.Settings.Mode=="bottom")Native.PlaceBottom(this);};Deactivated+=delegate{if(!isMovingWindow)ApplyAppearance();};
+   Activated+=delegate{if(!isMovingWindow)ApplyAppearance();if(!initializing&&!isMovingWindow&&data.Settings.Mode=="bottom")Native.PlaceBottom(this);};Deactivated+=delegate{taskSort.Cancel();if(!isMovingWindow)ApplyAppearance();};
    StateChanged+=delegate{if(!initializing&&!quitting&&!restoringBottom&&data.Settings.Mode=="bottom"&&WindowState==WindowState.Minimized)Dispatcher.BeginInvoke(new Action(KeepBottomVisible));};
    LocationChanged+=delegate{if(!initializing&&IsVisible&&WindowState==WindowState.Normal){data.Settings.Left=Left;data.Settings.Top=Top;ScheduleSave();}};
    Closing+=delegate(object sender,CancelEventArgs e){if(!quitting){e.Cancel=true;Collapse();}else SaveNow();};
-   PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape){if(page!="main")Main();else Collapse();e.Handled=true;}if(e.Key==Key.N&&Keyboard.Modifiers==ModifierKeys.Control){NewTask();e.Handled=true;}if(e.Key==Key.Enter&&Keyboard.Modifiers==ModifierKeys.Control&&page=="edit"){SaveTask();e.Handled=true;}};
+   PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape&&taskSort.IsHolding){taskSort.Cancel();e.Handled=true;return;}if(e.Key==Key.Escape){if(page!="main")Main();else Collapse();e.Handled=true;}if(e.Key==Key.N&&Keyboard.Modifiers==ModifierKeys.Control){NewTask();e.Handled=true;}if(e.Key==Key.Enter&&Keyboard.Modifiers==ModifierKeys.Control&&page=="edit"){SaveTask();e.Handled=true;}};
    BuildTray();Render();
   }
   void SourceReady(object sender,EventArgs e){
@@ -97,12 +99,13 @@ namespace FrostTodo {
   }
   void KeepBottomVisible(){if(restoringBottom||quitting||userCollapsed||isMovingWindow)return;restoringBottom=true;try{if(!IsVisible)Show();if(WindowState==WindowState.Minimized)WindowState=WindowState.Normal;EnsureOnScreen();Native.RestoreBottom(this);}finally{restoringBottom=false;}}
   public void Restore(){userCollapsed=false;if(dot!=null)dot.Hide();Show();if(WindowState==WindowState.Minimized)WindowState=WindowState.Normal;ApplyMode();if(data.Settings.Mode!="bottom")Activate();Render();}
-  void Collapse(){if(page=="edit"){if(!ConfirmDiscard())return;page="main";draft=null;}userCollapsed=true;Hide();if(data.Settings.Collapse=="dot"){if(dot==null)dot=new DotWindow(this);dot.Refresh();dot.Show();}else if(dot!=null)dot.Hide();SaveNow();}
-  public void Quit(){if(page=="edit"&&!ConfirmDiscard())return;quitting=true;saveTimer.Stop();reminderTimer.Stop();SaveNow();if(foregroundWatch!=null)foregroundWatch.Dispose();if(dot!=null){dot.AllowClose=true;dot.Close();}if(hwndSource!=null)Native.UnregisterHotKey(hwndSource.Handle,4101);tray.Visible=false;tray.Dispose();Close();Application.Current.Shutdown();}
+  void Collapse(){if(page=="edit"){if(!ConfirmDiscard())return;page="main";draft=null;}taskSort.Cancel();userCollapsed=true;Hide();if(data.Settings.Collapse=="dot"){if(dot==null)dot=new DotWindow(this);dot.Refresh();dot.Show();}else if(dot!=null)dot.Hide();SaveNow();}
+  public void Quit(){if(page=="edit"&&!ConfirmDiscard())return;quitting=true;taskSort.Dispose();saveTimer.Stop();reminderTimer.Stop();SaveNow();if(foregroundWatch!=null)foregroundWatch.Dispose();if(dot!=null){dot.AllowClose=true;dot.Close();}if(hwndSource!=null)Native.UnregisterHotKey(hwndSource.Handle,4101);tray.Visible=false;tray.Dispose();Close();Application.Current.Shutdown();}
   bool ConfirmDiscard(){if(page!="edit")return true;ReadEditor();if(draft==null)return true;Todo old=data.Tasks.FirstOrDefault(t=>t.Id==draft.Id);System.Web.Script.Serialization.JavaScriptSerializer json=new System.Web.Script.Serialization.JavaScriptSerializer();bool dirty=creating?(!String.IsNullOrWhiteSpace(draft.Title)||draft.Due!=""||draft.Reminder!=""):old!=null&&json.Serialize(old)!=json.Serialize(draft);if(dirty)return MessageBox.Show(this,"这条任务尚未保存，要放弃修改吗？","未保存的任务",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes;return true;}
   void Main(){if(!ConfirmDiscard())return;page="main";draft=null;Render();}
   bool Matches(Todo t){return Logic.View(t,view)&&(filterTags.Count==0||t.Tags.Any(x=>filterTags.Contains(x)))&&(filterUrgency.Count==0||filterUrgency.Contains(t.Urgency))&&(filterImportance.Count==0||filterImportance.Contains(t.Importance));}
   void Render(){
+   taskSort.ResetRows();
    double offset=(page==renderedPage&&(page=="settings"||page=="appearance"||page=="tags"||page=="edit"))?scroll.VerticalOffset:0;renderedPage=page;
    top.Children.Clear();body.Children.Clear();foot.Children.Clear();scroll.ScrollToTop();
    Grid bar=new Grid{Background=Brushes.Transparent};bar.SetResourceReference(FrameworkElement.HeightProperty,"UiHeaderHeight");bar.ColumnDefinitions.Add(new ColumnDefinition());bar.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
@@ -142,7 +145,12 @@ namespace FrostTodo {
    StackPanel content=new StackPanel();SpacedTitle title=TextAppearance.Title(t.Title);title.ToolTip=t.Title;if(t.Done){title.TextDecorations=TextDecorations.Strikethrough;title.Opacity=.55;}content.Children.Add(title);
    List<string> meta=new List<string>();if(t.Tags.Count>0)meta.Add(String.Join(" · ",t.Tags.Take(2)));if(t.Urgency>0)meta.Add(t.Urgency==2?"!!":"!");if(t.Due!="")meta.Add(Logic.DateLabel(t.Due)+(t.Time!=""?" "+t.Time:""));if(t.Importance>0)meta.Add(t.Importance==2?"◆◆":"◆");if(t.Repeat!="none")meta.Add("↻");if(t.Reminder!="")meta.Add("◦");
    if(meta.Count>0){TextBlock sub=Ui.Text(String.Join("   ",meta),11.5,true);sub.TextWrapping=TextWrapping.NoWrap;sub.TextTrimming=TextTrimming.CharacterEllipsis;sub.SetResourceReference(FrameworkElement.MarginProperty,"TaskMetaGap");content.Children.Add(sub);}
-   edit.Content=content;row.Children.Add(edit);Border line=new Border{BorderThickness=new Thickness(0,0,0,.5),Child=row};line.SetResourceReference(Border.BorderBrushProperty,"Line");body.Children.Add(line);
+   edit.Content=content;row.Children.Add(edit);Border line=new Border{BorderThickness=new Thickness(0,0,0,.5),Child=row};line.SetResourceReference(Border.BorderBrushProperty,"Line");body.Children.Add(line);taskSort.Bind(edit,line,t.Id);
+  }
+  void ReorderTask(string sourceId,string targetId,bool after){
+   List<Todo> previous=new List<Todo>(data.Tasks);if(!TaskOrdering.Move(data.Tasks,data.Tasks.Where(Matches).Select(t=>t.Id),sourceId,targetId,after))return;
+   try{store.Save(data);}catch(Exception e){data.Tasks=previous;Toast("排序未保存："+e.Message,null);return;}
+   undoTasks=previous.Select(t=>t.Copy()).ToList();double offset=scroll.VerticalOffset;Render();Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate{scroll.ScrollToVerticalOffset(offset);}));Toast("顺序已保存",Undo);
   }
   void NewTask(){if(!ConfirmDiscard())return;creating=true;draft=new Todo();if(view.StartsWith("tag:"))draft.Tags.Add(view.Substring(4));if(view=="today")draft.Due=Logic.Ymd(DateTime.Today);if(view=="urgent")draft.Urgency=1;if(view=="very-urgent")draft.Urgency=2;if(view=="important")draft.Importance=1;if(view=="very-important")draft.Importance=2;page="edit";Render();Dispatcher.BeginInvoke(new Action(delegate{titleInput.Focus();}));}
   void EditTask(Todo t){creating=false;draft=t.Copy();page="edit";Render();}

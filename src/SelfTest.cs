@@ -38,12 +38,38 @@ namespace FrostTodo {
     File.WriteAllText(store.FilePath,"broken JSON");AppData restored=store.Load();Assert(restored.Tasks[0].Title=="普通"&&Directory.GetFiles(path,"*.damaged-*").Length==1,"corrupt primary recovered and preserved",checks);
     CheckBackgroundPicture(path,checks);
     CheckTextAppearance(path,checks);
+    CheckTaskOrdering(path,checks);
     Assert(AppIcon.WindowIcon.PixelWidth==256&&AppIcon.WindowIcon.PixelHeight==256&&AppIcon.WindowIcon.IsFrozen,"embedded leaf window icon loads independently of asset files",checks);
     using(System.Drawing.Icon leaf=AppIcon.CreateTrayIcon())using(System.Drawing.Bitmap bitmap=leaf.ToBitmap()){bool painted=false;for(int y=0;y<bitmap.Height;y++)for(int x=0;x<bitmap.Width;x++)painted=painted||bitmap.GetPixel(x,y).A>0;Assert(leaf.Width==32&&leaf.Height==32&&bitmap.GetPixel(0,0).A==0&&painted,"embedded leaf tray icon is painted and retains transparent corners "+leaf.Width+"x"+leaf.Height+" alpha="+bitmap.GetPixel(0,0).A+" painted="+painted,checks);}
     Write(report,"PASS "+checks.Count+Environment.NewLine+String.Join(Environment.NewLine,checks));return 0;
    }catch(Exception e){Write(report,"FAIL\n"+String.Join(Environment.NewLine,checks)+"\n"+e);return 1;}
   }
   static void Assert(bool condition,string name,List<string> checks){if(!condition)throw new Exception(name);checks.Add("PASS "+name);}
+  static void CheckTaskOrdering(string path,List<string> checks){
+   Func<string,Todo> task=id=>new Todo{Id=id,Title="任务 "+id,Tags=new List<string>{"工作"}};
+   List<Todo> tasks=new[]{"a","b","c","d"}.Select(task).ToList();
+   Assert(TaskOrdering.Move(tasks,tasks.Select(t=>t.Id),"d","a",false)&&String.Join("",tasks.Select(t=>t.Id))=="dabc","dragging last task before first preserves all task data",checks);
+   Assert(TaskOrdering.Move(tasks,tasks.Select(t=>t.Id),"d","c",true)&&String.Join("",tasks.Select(t=>t.Id))=="abcd","dragging first task below last inserts after target",checks);
+   Assert(TaskOrdering.Move(tasks,tasks.Select(t=>t.Id),"a","c",false)&&String.Join("",tasks.Select(t=>t.Id))=="bacd","downward insertion accounts for removing the source row",checks);
+   Assert(!TaskOrdering.Move(tasks,tasks.Select(t=>t.Id),"a","a",true)&&!TaskOrdering.Move(tasks,tasks.Select(t=>t.Id),"a","c",false)&&String.Join("",tasks.Select(t=>t.Id))=="bacd","dropping on self or unchanged adjacent position does not mutate order",checks);
+   Todo hidden=task("hidden"),done=task("done");hidden.Tags=new List<string>{"生活"};done.Done=true;tasks=new List<Todo>{task("a"),hidden,task("b"),done,task("c")};
+   Assert(TaskOrdering.Move(tasks,tasks.Where(t=>!t.Done&&t.Tags.Contains("工作")).Select(t=>t.Id),"c","a",false)&&String.Join(",",tasks.Select(t=>t.Id))=="c,hidden,a,done,b"&&Object.ReferenceEquals(tasks[1],hidden)&&Object.ReferenceEquals(tasks[3],done),"filtered sorting changes only visible slots and leaves hidden and completed tasks in place",checks);
+   string original=String.Join(",",tasks.Select(t=>t.Id));
+   Assert(!TaskOrdering.Move(tasks,new[]{"a","b","c"},"hidden","a",false)&&!TaskOrdering.Move(tasks,new[]{"a","b","c"},"a","missing",true)&&String.Join(",",tasks.Select(t=>t.Id))==original,"stale or hidden drag targets cannot change the task list",checks);
+   Assert(TaskOrdering.Move(tasks,new[]{"a","a","b","c","missing"},"c","b",true)&&String.Join(",",tasks.Select(t=>t.Id))=="a,hidden,b,done,c","duplicate or stale visible ids cannot duplicate or lose tasks",checks);
+   List<Todo> undo=tasks.Select(t=>t.Copy()).ToList();TaskOrdering.Move(tasks,new[]{"a","b","c"},"a","c",true);List<Todo> reordered=tasks.ToList();tasks=undo;
+   Assert(String.Join(",",tasks.Select(t=>t.Id))=="a,hidden,b,done,c"&&String.Join(",",reordered.Select(t=>t.Id))=="b,hidden,c,done,a","order snapshots restore the previous manual sequence",checks);
+   AppData data=new AppData{Tasks=reordered};Store store=new Store(Path.Combine(path,"ordering"));store.Save(data);AppData restored=store.Load();Assert(restored.Tasks.Select(t=>t.Id).SequenceEqual(reordered.Select(t=>t.Id))&&restored.Tasks.Count==5&&restored.Tasks.First(t=>t.Id=="hidden").Tags.SequenceEqual(new[]{"生活"}),"manual order survives restart without changing tags or task ids",checks);
+   Assert(store.Decode(store.Encode(restored)).Tasks.Select(t=>t.Id).SequenceEqual(reordered.Select(t=>t.Id)),"backup round trip preserves manual order",checks);
+   string savedOrder=String.Join(",",restored.Tasks.Select(t=>t.Id));Logic.Complete(restored.Tasks[0],DateTime.Today);Logic.Complete(restored.Tasks[0],DateTime.Today);Assert(String.Join(",",restored.Tasks.Select(t=>t.Id))==savedOrder,"complete and restore retain the manual sequence",checks);
+   tasks=new List<Todo>{task("only")};Assert(!TaskOrdering.Move(tasks,new[]{"only"},"only","only",false)&&tasks.Count==1,"single task sorting is a no-op",checks);
+   TaskHoldGesture gesture=new TaskHoldGesture();gesture.Press(10,10,1000);Assert(!gesture.Activate(1449,true)&&gesture.Pending&&!gesture.Release(),"short press retains ordinary edit click behavior",checks);
+   gesture.Press(10,10,2000);Assert(gesture.Activate(2450,true)&&gesture.Active&&gesture.Release(),"long press starts sorting and consumes the edit click",checks);
+   gesture.Press(10,10,3000);gesture.Move(19,10);Assert(!gesture.Activate(4000,true)&&gesture.CancelledByMovement&&gesture.Release(),"movement before hold threshold cancels sorting and accidental edit",checks);
+   gesture.Press(10,10,4000);gesture.Move(14,13);Assert(gesture.Activate(4450,true),"small pointer jitter does not cancel long press",checks);gesture.Move(100,300);Assert(gesture.Active&&gesture.Release(),"large movement after long press remains a sortable drag",checks);
+   gesture.Press(0,0,5000);Assert(!gesture.Activate(5500,false)&&!gesture.Active&&!gesture.Release(),"release outside timer cannot leave a stuck sorting gesture",checks);
+   gesture.Press(0,0,6000);gesture.Activate(6500,true);gesture.Reset();gesture.Press(0,0,7000);Assert(!gesture.Activate(7100,true)&&!gesture.Active&&gesture.Pending,"cancel or escape clears the previous hold timer",checks);gesture.Reset();
+  }
   static void CheckTextAppearance(string path,List<string> checks){
    Store store=new Store(Path.Combine(path,"text-settings"));AppData data=new AppData();data.Settings.TextSize=19;data.Settings.TextWeight="bold";data.Settings.TextRendering="pixel";data.Settings.TextContrast=98;data.Settings.TextSpacing=2.5;data.Settings.TextLineGap=12;data.Settings.Font="yahei";store.Save(data);Preferences loaded=store.Load().Settings;
    Assert(loaded.TextSize==19&&loaded.TextWeight=="bold"&&loaded.TextRendering=="pixel"&&loaded.TextContrast==98&&loaded.TextSpacing==2.5&&loaded.TextLineGap==12&&loaded.Font=="yahei","all font controls persist across restart",checks);
