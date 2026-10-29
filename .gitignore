@@ -1,0 +1,16 @@
+*.exe
+*.pdb
+*.user
+*.suo
+.vs/
+bin/
+obj/
+dist/
+artifacts/
+work/
+.solo-dev/
+tasks.json
+tasks.json.*
+error.log
+Thumbs.db
+.DS_Store

@@ -1,0 +1,46 @@
+[
+  {
+    "file": "Yozai-Regular.ttf",
+    "repository": "https://github.com/lxgw/yozai-font",
+    "version": "v0.868",
+    "source": "https://github.com/lxgw/yozai-font/releases/download/v0.868/Yozai-Regular.ttf",
+    "family_names": [
+      "Yozai",
+      "悠哉字体"
+    ],
+    "glyphs": 26006,
+    "bytes": 15605374,
+    "sha256": "25071998a0fe6a72f54c235e714986d259633e5ff670b1a2b5e264387f3316ac",
+    "license": "Yozai-Regular-OFL.txt"
+  },
+  {
+    "file": "LxgwMarkerGothic-Regular.ttf",
+    "repository": "https://github.com/lxgw/LxgwMarkerGothic",
+    "version": "v1.004",
+    "source": "https://github.com/lxgw/LxgwMarkerGothic/releases/download/v1.004/LxgwMarkerGothic-v1.004.zip",
+    "family_names": [
+      "LXGW Marker Gothic",
+      "霞鹜漫黑"
+    ],
+    "glyphs": 15368,
+    "bytes": 3190368,
+    "sha256": "dfc9b27ef9e83024d5926d4a1feb70604eaf8c16aa73659c81d75a22accadae4",
+    "license": "LxgwMarkerGothic-Regular-OFL.txt"
+  },
+  {
+    "file": "Cubic_11.ttf",
+    "repository": "https://github.com/ACh-K/Cubic-11",
+    "version": "v1.500",
+    "source": "https://raw.githubusercontent.com/ACh-K/Cubic-11/v1.500/fonts/ttf/Cubic_11.ttf",
+    "family_names": [
+      "Cubic 11",
+      "俐方体11号",
+      "俐方體11号",
+      "俐方體11號"
+    ],
+    "glyphs": 10268,
+    "bytes": 2773732,
+    "sha256": "0193f5f033612496df6b45ee92ac3b335bc6a5a24ff95da55ca87b33e57dcf62",
+    "license": "Cubic_11-OFL.txt"
+  }
+]
