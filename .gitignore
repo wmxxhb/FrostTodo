@@ -1,4 +1,5 @@
 *.exe
+FrostTodo-*.exe.config
 *.pdb
 *.user
 *.suo

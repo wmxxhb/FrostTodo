@@ -38,6 +38,8 @@ namespace FrostTodo {
     File.WriteAllText(store.FilePath,"broken JSON");AppData restored=store.Load();Assert(restored.Tasks[0].Title=="普通"&&Directory.GetFiles(path,"*.damaged-*").Length==1,"corrupt primary recovered and preserved",checks);
     CheckBackgroundPicture(path,checks);
     CheckTextAppearance(path,checks);
+    Assert(AppIcon.WindowIcon.PixelWidth==256&&AppIcon.WindowIcon.PixelHeight==256&&AppIcon.WindowIcon.IsFrozen,"embedded leaf window icon loads independently of asset files",checks);
+    using(System.Drawing.Icon leaf=AppIcon.CreateTrayIcon())using(System.Drawing.Bitmap bitmap=leaf.ToBitmap()){bool painted=false;for(int y=0;y<bitmap.Height;y++)for(int x=0;x<bitmap.Width;x++)painted=painted||bitmap.GetPixel(x,y).A>0;Assert(leaf.Width==32&&leaf.Height==32&&bitmap.GetPixel(0,0).A==0&&painted,"embedded leaf tray icon is painted and retains transparent corners "+leaf.Width+"x"+leaf.Height+" alpha="+bitmap.GetPixel(0,0).A+" painted="+painted,checks);}
     Write(report,"PASS "+checks.Count+Environment.NewLine+String.Join(Environment.NewLine,checks));return 0;
    }catch(Exception e){Write(report,"FAIL\n"+String.Join(Environment.NewLine,checks)+"\n"+e);return 1;}
   }
