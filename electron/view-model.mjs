@@ -1,6 +1,6 @@
 export const quickViews=[['all','所有任务'],['today','今日任务'],['done','已完成'],['urgent','紧急'],['very-urgent','非常紧急'],['important','重要'],['very-important','非常重要']];
-export const fonts=[['desktop','GPT 桌面字体'],['system','系统默认'],['yahei','微软雅黑 UI'],['segoe','Segoe UI'],['yozai','Yozai · 悠哉'],['marker','霞鹜漫黑'],['cubic','Cubic 11']];
-export const fontStacks={desktop:'-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',system:'system-ui, sans-serif',yahei:'"Microsoft YaHei UI", sans-serif',segoe:'"Segoe UI", "Microsoft YaHei UI", sans-serif',yozai:'Yozai, sans-serif',marker:'"LXGW Marker Gothic", sans-serif',cubic:'"Cubic 11", sans-serif'};
+export const fonts=[['desktop','Segoe UI + Noto Sans SC（默认）'],['system','系统默认'],['yahei','微软雅黑 UI']];
+export const fontStacks={desktop:'"Segoe UI", "Noto Sans SC", sans-serif',system:'system-ui, sans-serif',yahei:'"Microsoft YaHei UI", sans-serif'};
 export const colors=[['雾白','#F3F6FA'],['灰蓝','#D8E6F2'],['浅沙','#F3E8D9'],['鼠尾草','#DFE8DD'],['长春花蓝','#7B8AD7'],['可可棕','#6D483B'],['苔青色','#465C47'],['浅松色','#FFC44F']];
 export const repeats=[['none','不重复'],['daily','每天'],['weekdays','工作日'],['weekly','每周'],['monthly','每月'],['custom','指定星期']];
 export const weights={normal:400,medium:500,semibold:600,bold:700};

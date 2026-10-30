@@ -14,13 +14,13 @@ test('Chromium task service preserves native task behavior, isolated persistence
   state=await bridge.call('reorder',{source:'daily',target:'second',after:false,visible:['daily','second']});assert.deepEqual(state.Data.Tasks.map(t=>t.Id),['daily','second']);
   state=await bridge.call('tagAdd',{tag:'自定义'});assert.ok(state.Data.Themes.includes('自定义'));state=await bridge.call('tagVisible',{tag:'自定义',visible:false});assert.ok(!state.Data.Settings.QuickTags.includes('自定义'));
   await assert.rejects(bridge.call('tagAdd',{tag:'自定义'}));assert.equal((await bridge.call('snapshot')).Data.Tasks.length,2);
-  state=await bridge.call('settings',{Font:'yozai',TextSize:20,GptTheme:'dark',QuickViews:['very-important','very-urgent']});assert.equal(state.Data.Settings.TextSize,20);assert.equal(state.Data.Settings.GptTheme,'dark');
+  state=await bridge.call('settings',{Font:'yahei',TextSize:20,GptTheme:'dark',QuickViews:['very-important','very-urgent']});assert.equal(state.Data.Settings.TextSize,20);assert.equal(state.Data.Settings.GptTheme,'dark');
   const before=await bridge.call('export');await assert.rejects(bridge.call('saveTask',{task:{...emptyTask('invalid','错误时间'),Time:'18:30'}}));assert.equal(await bridge.call('export'),before);
   await assert.rejects(bridge.call('settings',{Unknown:'bad'}));assert.equal(await bridge.call('export'),before);
-  const copy=JSON.parse(before);copy.Tasks.push(emptyTask('imported','新导入'));copy.Settings.Font='cubic';state=await bridge.call('import',{text:JSON.stringify(copy)});assert.equal(state.Data.Tasks.length,3);assert.equal(state.Data.Settings.Font,'yozai');
+  const copy=JSON.parse(before);copy.Tasks.push(emptyTask('imported','新导入'));copy.Settings.Font='cubic';state=await bridge.call('import',{text:JSON.stringify(copy)});assert.equal(state.Data.Tasks.length,3);assert.equal(state.Data.Settings.Font,'yahei');
   state=await bridge.call('import',{text:JSON.stringify(copy)});assert.equal(state.Data.Tasks.length,3);
   const exported=await bridge.call('export');assert.ok(await fs.stat(path.join(dir,'tasks.json.previous')));await bridge.close();
-  const restarted=new Bridge(exe,dir);try{state=await restarted.call('snapshot');assert.equal(state.Data.Settings.Font,'yozai');assert.equal(state.Data.Tasks.length,3);assert.deepEqual(state.Data.Tasks.map(t=>t.Id),['daily','second','imported']);assert.equal(state.Data.Settings.TextSize,20);}finally{await restarted.close();}
+  const restarted=new Bridge(exe,dir);try{state=await restarted.call('snapshot');assert.equal(state.Data.Settings.Font,'yahei');assert.equal(state.Data.Tasks.length,3);assert.deepEqual(state.Data.Tasks.map(t=>t.Id),['daily','second','imported']);assert.equal(state.Data.Settings.TextSize,20);}finally{await restarted.close();}
   assert.equal(JSON.parse(exported).Version,1);
  }finally{await bridge.close();}
 });
@@ -43,4 +43,9 @@ test('one-click desktop defaults persist while retaining tasks, tags and desktop
   assert.equal(state.Data.Tasks[0].Title,'保留任务');assert.ok(state.Data.Themes.includes('保留标签'));assert.equal(p.Mode,'bottom');assert.equal(p.Left,123);assert.equal(p.Top,234);assert.equal(p.DotLeft,-1300);assert.deepEqual(p.QuickViews,['very-important']);
   await bridge.close();const reopened=new Bridge(exe,root);try{const restored=await reopened.call('snapshot');assert.equal(restored.Data.Settings.TabTextSize,0);assert.equal(restored.Data.Settings.Font,'desktop');assert.equal(restored.Data.Tasks.length,1);}finally{await reopened.close();}
  }finally{await bridge.close();}
+});
+test('removed bundled fonts safely fall back without leaving a blank selector or dropping tasks',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'frost-font-compat-')),bridge=new Bridge(exe,root);
+ try{await bridge.call('saveTask',{task:emptyTask('keep','保留任务')});for(const font of ['yozai','marker','cubic','segoe']){const state=await bridge.call('settings',{Font:font});assert.equal(state.Data.Settings.Font,'desktop');assert.equal(state.Data.Tasks[0].Title,'保留任务');}}
+ finally{await bridge.close();}
 });

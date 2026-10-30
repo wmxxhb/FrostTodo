@@ -37,6 +37,10 @@ namespace FrostTodo {
    }
    Themes=Themes.Where(x=>!String.IsNullOrWhiteSpace(x)).Distinct().ToList();
    Preferences p=Settings; if(p.QuickTags==null)p.QuickTags=new List<string>();if(p.QuickViews==null)p.QuickViews=new List<string>{"urgent","important"};p.QuickViews=p.QuickViews.Where(x=>new[]{"urgent","very-urgent","important","very-important"}.Contains(x)).Distinct().ToList();if(!FontCatalog.Keys.Contains(p.Font))p.Font="system";
+
+#if CHROMIUM_CORE
+   if(new[]{"segoe","yozai","marker","cubic"}.Contains(p.Font))p.Font="desktop";
+#endif
    TextAppearance.Normalize(p);if(p.TabTextSize!=0)p.TabTextSize=Math.Max(10,Math.Min(22,p.TabTextSize));if(!new[]{"light","dark","system","custom"}.Contains(p.GptTheme))p.GptTheme="light";
    if(!p.LightBackdropV1){p.Tint="#F3F6FA";p.LightBackdropV1=true;}
    p.Opacity=Math.Max(10,Math.Min(UiVariant.MaximumOpacity,p.Opacity));if(!new[]{"top","normal","bottom"}.Contains(p.Mode))p.Mode="top";
