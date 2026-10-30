@@ -23,7 +23,7 @@
 
 适用于 64 位 Windows 10 / 11，需要 .NET Framework 4.8。
 
-1. 在 [Releases](https://github.com/wmxxhb/FrostTodo/releases/tag/v0.5.0-gpt.3) 下载 `FrostTodo-Chromium-Windows-0.5.0-gpt.3.zip`。
+1. 在 [Releases](https://github.com/wmxxhb/FrostTodo/releases/tag/v0.5.0-gpt.4) 下载 `FrostTodo-Chromium-Windows-0.5.0-gpt.4.zip`。
 2. 完整解压，保留应用旁边的 `resources`、`locales` 文件夹及所有运行文件。无需安装 Node.js。
 3. 双击 `FrostTodo-Chromium.exe` 启动。
 
