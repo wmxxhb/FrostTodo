@@ -7,7 +7,7 @@ const root=__dirname,assetRoot=app.isPackaged?root:path.join(root,'..'),local=pr
 const explicit=process.argv.indexOf('--data-dir');
 const profile=explicit>=0?path.resolve(process.argv[explicit+1]):path.join(local,'FrostTodo-Chromium');
 fs.mkdirSync(path.join(profile,'browser'),{recursive:true});app.setPath('userData',path.join(profile,'browser'));app.setName('FrostTodo Chromium');
-let main,dot,tray,bridge,state,quitting=false,collapsed=false,currentCount=0,route='main',hotkey='',timer,boundsTimer,busyTick=false,replacing=false,movingUntil=0;
+let main,dot,tray,bridge,state,quitting=false,collapsed=false,currentCount=0,route='main',hotkey='',timer,boundsTimer,busyTick=false,replacing=false,movingUntil=0,pendingNotices=[];
 const retiring=new WeakSet(),transparency=new WeakMap();let queue=Promise.resolve();const notices=new Set();
 function serialize(action){const next=queue.then(action);queue=next.catch(()=>{});return next;}
 function core(op,arg){return serialize(()=>bridge.call(op,arg));}
@@ -68,8 +68,10 @@ async function settings(patch){const old=transparentFor(state.Data.Settings);upd
 function report(error){if(quitting)return;const message=String(error?.message||error);if(main&&!main.isDestroyed())main.webContents.send('frost:command',{error:message});}
 async function quit(){if(quitting)return;quitting=true;clearInterval(timer);clearTimeout(boundsTimer);globalShortcut.unregisterAll();if(bridge){if(main&&!main.isDestroyed()){const b=main.getBounds();await core('settings',{Width:b.width,Height:b.height,Left:b.x,Top:b.y}).catch(()=>{});}await bridge.close().catch(()=>{});}if(tray)tray.destroy();app.quit();}
 function notify(tasks){
+ pendingNotices=tasks;
+ const fallback=()=>{if(tray)tray.displayBalloon({title:'待办提醒',content:tasks.slice(0,4).map(t=>t.Title).join('\n'),icon:nativeImage.createFromPath(path.join(assetRoot,'Assets','FrostTodo.ico'))});};
  const notification=new Notification({title:tasks.length>1?`有 ${tasks.length} 项待办提醒`:'待办提醒',body:tasks.slice(0,4).map(t=>t.Title).join('\n'),icon:path.join(assetRoot,'Assets','FrostTodo.png'),timeoutType:'never'});notices.add(notification);
- notification.on('click',()=>{show();main.webContents.send('frost:command',{reminders:tasks});});notification.on('close',()=>notices.delete(notification));notification.show();
+ notification.on('click',()=>{show();main.webContents.send('frost:command',{reminders:tasks});});notification.on('close',()=>notices.delete(notification));notification.on('failed',()=>{notices.delete(notification);fallback();});try{notification.show();}catch{fallback();}
  if(main&&!main.isDestroyed())main.webContents.send('frost:command',{reminders:tasks});
 }
 const taskOps=new Set(['saveTask','complete','delete','undo','reorder','tagAdd','tagRemove','tagVisible']);
@@ -105,7 +107,7 @@ if(!app.requestSingleInstanceLock()){app.quit();}else{
   ipcMain.handle('frost:action',action);
   for(const key of ['Control+Alt+Space','Control+Alt+T','Control+Shift+F12'])if(globalShortcut.register(key,()=>{if(main?.isVisible())command('collapse');else show();})){hotkey=key.replace('Control','Ctrl');break;}
   if(!hotkey)hotkey='托盘图标';await createMain();
-  tray=new Tray(nativeImage.createFromPath(path.join(assetRoot,'Assets','FrostTodo.ico')));tray.setToolTip('FrostTodo Chromium');tray.on('click',show);tray.on('right-click',()=>tray.popUpContextMenu(Menu.buildFromTemplate(menuTemplate())));
+  tray=new Tray(nativeImage.createFromPath(path.join(assetRoot,'Assets','FrostTodo.ico')));tray.setToolTip('FrostTodo Chromium');tray.on('click',show);tray.on('right-click',()=>tray.popUpContextMenu(Menu.buildFromTemplate(menuTemplate())));tray.on('balloon-click',()=>command({reminders:pendingNotices}));
   nativeTheme.on('updated',()=>{sendState();refreshWindow().catch(report);});
   timer=setInterval(async()=>{if(busyTick||quitting)return;busyTick=true;try{const result=await core('tick');if(result.Changed)updateState(result.State);if(result.Notices.length)notify(result.Notices);if(state.Data.Settings.Mode==='bottom'&&main?.isVisible()&&Date.now()>movingUntil)await applyWindow();}catch(e){report(e);}finally{busyTick=false;}},2000);
  }).catch(async error=>{dialog.showErrorBox('FrostTodo 无法启动',String(error.message||error)+'\n现有数据文件已保留。');await quit();});
