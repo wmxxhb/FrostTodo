@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace FrostTodo {
- public static class SelfTest {
+ public static partial class SelfTest {
   public static int Run(string[] args){
    List<string> checks=new List<string>();string report=null,testDir=null;for(int i=0;i<args.Length-1;i++){if(args[i]=="--test-report")report=args[i+1];if(args[i]=="--test-dir")testDir=args[i+1];}
    try{
@@ -39,6 +39,7 @@ namespace FrostTodo {
     CheckBackgroundPicture(path,checks);
     CheckTextAppearance(path,checks);
     CheckTaskOrdering(path,checks);
+    CheckRecurrence(path,checks);
     Assert(AppIcon.WindowIcon.PixelWidth==256&&AppIcon.WindowIcon.PixelHeight==256&&AppIcon.WindowIcon.IsFrozen,"embedded leaf window icon loads independently of asset files",checks);
     using(System.Drawing.Icon leaf=AppIcon.CreateTrayIcon())using(System.Drawing.Bitmap bitmap=leaf.ToBitmap()){bool painted=false;for(int y=0;y<bitmap.Height;y++)for(int x=0;x<bitmap.Width;x++)painted=painted||bitmap.GetPixel(x,y).A>0;Assert(leaf.Width==32&&leaf.Height==32&&bitmap.GetPixel(0,0).A==0&&painted,"embedded leaf tray icon is painted and retains transparent corners "+leaf.Width+"x"+leaf.Height+" alpha="+bitmap.GetPixel(0,0).A+" painted="+painted,checks);}
     Write(report,"PASS "+checks.Count+Environment.NewLine+String.Join(Environment.NewLine,checks));return 0;

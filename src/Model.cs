@@ -8,9 +8,10 @@ namespace FrostTodo {
   public string Id {get;set;} public string Title {get;set;} public List<string> Tags {get;set;}
   public string Due {get;set;} public string Time {get;set;} public int Urgency {get;set;} public int Importance {get;set;}
   public string Reminder {get;set;} public bool ReminderFired {get;set;} public string Repeat {get;set;} public int Anchor {get;set;}
+  public string RepeatDue {get;set;} public string SnoozedUntil {get;set;} public string SnoozedFor {get;set;}
   public List<int> WeekDays {get;set;} public bool Done {get;set;} public string Created {get;set;}
-  public Todo(){Id=Guid.NewGuid().ToString("N");Title="";Tags=new List<string>();Due="";Time="";Reminder="";Repeat="none";WeekDays=new List<int>();Created=DateTime.Now.ToString("o");}
-  public Todo Copy(){return new Todo{Id=Id,Title=Title,Tags=new List<string>(Tags),Due=Due,Time=Time,Urgency=Urgency,Importance=Importance,Reminder=Reminder,ReminderFired=ReminderFired,Repeat=Repeat,Anchor=Anchor,WeekDays=new List<int>(WeekDays),Done=Done,Created=Created};}
+  public Todo(){Id=Guid.NewGuid().ToString("N");Title="";Tags=new List<string>();Due="";Time="";Reminder="";Repeat="none";RepeatDue="";SnoozedUntil="";SnoozedFor="";WeekDays=new List<int>();Created=DateTime.Now.ToString("o");}
+  public Todo Copy(){return new Todo{Id=Id,Title=Title,Tags=new List<string>(Tags),Due=Due,Time=Time,Urgency=Urgency,Importance=Importance,Reminder=Reminder,ReminderFired=ReminderFired,Repeat=Repeat,Anchor=Anchor,RepeatDue=RepeatDue,SnoozedUntil=SnoozedUntil,SnoozedFor=SnoozedFor,WeekDays=new List<int>(WeekDays),Done=Done,Created=Created};}
  }
  public class Preferences {
   public string BackgroundImage {get;set;} public string BackgroundImageName {get;set;}
@@ -30,6 +31,7 @@ namespace FrostTodo {
    if(Tasks.Count>20000)throw new InvalidOperationException("任务数量超出支持范围。");
    HashSet<string> ids=new HashSet<string>();
    foreach(Todo t in Tasks){if(t==null||String.IsNullOrWhiteSpace(t.Title))throw new InvalidOperationException("存在空白任务。");if(String.IsNullOrEmpty(t.Id)||!ids.Add(t.Id))throw new InvalidOperationException("任务标识重复或缺失。");if(t.Tags==null)t.Tags=new List<string>();t.Tags=t.Tags.Where(x=>!String.IsNullOrWhiteSpace(x)).Distinct().ToList();if(t.WeekDays==null)t.WeekDays=new List<int>();t.WeekDays=t.WeekDays.Where(n=>n>=0&&n<=6).Distinct().ToList();t.Urgency=Math.Max(0,Math.Min(2,t.Urgency));t.Importance=Math.Max(0,Math.Min(2,t.Importance));if(!Logic.Repeats.Contains(t.Repeat))t.Repeat="none";t.Due=t.Due??"";t.Time=t.Time??"";t.Reminder=t.Reminder??"";
+    t.RepeatDue=t.RepeatDue??"";t.SnoozedUntil=t.SnoozedUntil??"";t.SnoozedFor=t.SnoozedFor??"";if(t.RepeatDue!=""&&!Logic.IsDate(t.RepeatDue))throw new InvalidOperationException("重复任务日期格式无效。");if(t.SnoozedUntil!=""&&!Logic.IsStamp(t.SnoozedUntil))throw new InvalidOperationException("稍后提醒格式无效。");
     if(t.Due!=""&&!Logic.IsDate(t.Due))throw new InvalidOperationException("任务截止日期格式无效。");if(t.Time!=""&&!Logic.IsTime(t.Time))throw new InvalidOperationException("任务时间格式无效。");if(t.Reminder!=""&&!Logic.IsStamp(t.Reminder))throw new InvalidOperationException("提醒格式无效。");foreach(string tag in t.Tags)if(!Themes.Contains(tag))Themes.Add(tag);
    }
    Themes=Themes.Where(x=>!String.IsNullOrWhiteSpace(x)).Distinct().ToList();
@@ -59,20 +61,17 @@ namespace FrostTodo {
   public static string Ymd(DateTime d){return d.ToString("yyyy-MM-dd");}
   public static string DateLabel(string s){if(String.IsNullOrEmpty(s))return "";DateTime d=Date(s);int delta=(d-DateTime.Today).Days;return delta==0?"今天":delta==1?"明天":delta==-1?"昨天":d.ToString(d.Year==DateTime.Today.Year?"M月d日":"yyyy年M月d日");}
   public static string Next(Todo t,DateTime today){
-   if(t.Repeat=="none")return t.Due;DateTime cursor=String.IsNullOrEmpty(t.Due)?today.Date:Date(t.Due);int anchor=t.Anchor>0?t.Anchor:cursor.Day;
-   do {if(t.Repeat=="monthly"){DateTime first=new DateTime(cursor.Year,cursor.Month,1).AddMonths(1);cursor=new DateTime(first.Year,first.Month,Math.Min(anchor,DateTime.DaysInMonth(first.Year,first.Month)));}
-    else if(t.Repeat=="weekly")cursor=cursor.AddDays(7);
-    else {cursor=cursor.AddDays(1);if(t.Repeat=="weekdays")while(cursor.DayOfWeek==DayOfWeek.Saturday||cursor.DayOfWeek==DayOfWeek.Sunday)cursor=cursor.AddDays(1);
-     if(t.Repeat=="custom"&&t.WeekDays.Count>0)while(!t.WeekDays.Contains((int)cursor.DayOfWeek))cursor=cursor.AddDays(1);}
-   }while(cursor<=today.Date);return Ymd(cursor);
+   if(t.Repeat=="none")return t.Due;DateTime? current=Recurrence.Occurrence(t,today);if(!current.HasValue||current.Value==DateTime.MaxValue.Date)return t.Due;DateTime? next=Recurrence.Occurrence(t,current.Value.AddDays(1));return next.HasValue?Ymd(next.Value):t.Due;
   }
   public static void Complete(Todo t,DateTime today){
-   if(t.Done){t.Done=false;return;}if(t.Repeat=="none"){t.Done=true;return;}
-   string next=Next(t,today);if(t.Reminder!=""){DateTime old=String.IsNullOrEmpty(t.Due)?today.Date:Date(t.Due);TimeSpan offset=Stamp(t.Reminder)-old;t.Reminder=Date(next).Add(offset).ToString("yyyy-MM-dd'T'HH:mm");t.ReminderFired=false;}t.Due=next;
+   if(t.Done){t.Done=false;return;}if(t.Repeat=="none"){t.Done=true;t.SnoozedUntil="";t.SnoozedFor="";return;}
+   Recurrence.Refresh(t,today);DateTime? current=Recurrence.Occurrence(t,today);string next=Next(t,today);if(!current.HasValue||!IsDate(next))return;
+   Recurrence.ShiftReminder(t,current.Value,Date(next));t.RepeatDue=next;if(t.Due!="")t.Due=next;t.SnoozedUntil="";t.SnoozedFor="";
   }
-  public static bool View(Todo t,string view){
+  public static bool View(Todo t,string view){return View(t,view,DateTime.Today);}
+  public static bool View(Todo t,string view,DateTime today){
    if(view=="done")return t.Done;if(t.Done)return false;
-   if(view=="today")return t.Due==Ymd(DateTime.Today);if(view=="overdue")return t.Due!=""&&Date(t.Due)<DateTime.Today;
+   if(view=="today")return Recurrence.DisplayDue(t,today)==Ymd(today);if(view=="overdue")return t.Repeat=="none"&&t.Due!=""&&Date(t.Due)<today.Date;
    if(view=="urgent")return t.Urgency>0;if(view=="very-urgent")return t.Urgency==2;if(view=="important")return t.Importance>0;if(view=="very-important")return t.Importance==2;
    if(view.StartsWith("tag:"))return t.Tags.Contains(view.Substring(4));return true;
   }
