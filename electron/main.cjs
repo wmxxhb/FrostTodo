@@ -6,7 +6,7 @@ protocol.registerSchemesAsPrivileged([{scheme:'frost',privileges:{standard:true,
 const root=__dirname,assetRoot=app.isPackaged?root:path.join(root,'..'),local=process.env.LOCALAPPDATA||app.getPath('userData');
 const explicit=process.argv.indexOf('--data-dir');
 const profile=explicit>=0?path.resolve(process.argv[explicit+1]):path.join(local,'FrostTodo-Chromium');
-fs.mkdirSync(path.join(profile,'browser'),{recursive:true});app.setPath('userData',path.join(profile,'browser'));app.setName('FrostTodo Chromium');
+fs.mkdirSync(path.join(profile,'browser'),{recursive:true});app.setPath('userData',path.join(profile,'browser'));app.setName('FrostTodo');
 let main,dot,tray,bridge,state,quitting=false,collapsed=false,currentCount=0,route='main',hotkey='',timer,boundsTimer,busyTick=false,replacing=false,movingUntil=0,pendingNotices=[];
 const retiring=new WeakSet(),transparency=new WeakMap();let queue=Promise.resolve();const notices=new Set();
 function serialize(action){const next=queue.then(action);queue=next.catch(()=>{});return next;}
@@ -28,7 +28,7 @@ function protect(win){
 }
 async function createMain(previous){
  const p=state.Data.Settings,bounds=previous&&!previous.isDestroyed()?previous.getBounds():safeBounds(p,screen.getAllDisplays());
- const win=new BrowserWindow({...bounds,minWidth:300,minHeight:340,maxWidth:1600,maxHeight:1800,show:false,frame:false,transparent:transparentFor(p),backgroundColor:transparentFor(p)?'#00000000':surface(),roundedCorners:false,hasShadow:false,resizable:true,title:'FrostTodo · Chromium',icon:path.join(assetRoot,'Assets','FrostTodo.ico'),webPreferences:{preload:path.join(root,'preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,spellcheck:false,backgroundThrottling:true}});
+ const win=new BrowserWindow({...bounds,minWidth:300,minHeight:340,maxWidth:1600,maxHeight:1800,show:false,frame:false,transparent:transparentFor(p),backgroundColor:transparentFor(p)?'#00000000':surface(),roundedCorners:false,hasShadow:false,resizable:true,title:'FrostTodo',icon:path.join(assetRoot,'Assets','FrostTodo.ico'),webPreferences:{preload:path.join(root,'preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,spellcheck:false,backgroundThrottling:true}});
  main=win;transparency.set(win,transparentFor(p));protect(win);
  win.on('close',e=>{if(!quitting&&!retiring.has(win)){e.preventDefault();win.webContents.send('frost:command','collapse');}});
  win.on('closed',()=>{if(main===win)main=null;});
@@ -111,7 +111,7 @@ if(!app.requestSingleInstanceLock()){app.quit();}else{
   ipcMain.handle('frost:action',action);
   for(const key of ['Control+Alt+Space','Control+Alt+T','Control+Shift+F12'])if(globalShortcut.register(key,()=>{if(main?.isVisible())command('collapse');else show();})){hotkey=key.replace('Control','Ctrl');break;}
   if(!hotkey)hotkey='托盘图标';await createMain();
-  tray=new Tray(nativeImage.createFromPath(path.join(assetRoot,'Assets','FrostTodo.ico')));tray.setToolTip('FrostTodo Chromium');tray.on('click',show);tray.on('right-click',()=>tray.popUpContextMenu(Menu.buildFromTemplate(menuTemplate())));tray.on('balloon-click',()=>command({reminders:pendingNotices}));
+  tray=new Tray(nativeImage.createFromPath(path.join(assetRoot,'Assets','FrostTodo.ico')));tray.setToolTip('FrostTodo');tray.on('click',show);tray.on('right-click',()=>tray.popUpContextMenu(Menu.buildFromTemplate(menuTemplate())));tray.on('balloon-click',()=>command({reminders:pendingNotices}));
   nativeTheme.on('updated',()=>{sendState();refreshWindow().catch(report);});
   timer=setInterval(async()=>{if(busyTick||quitting)return;busyTick=true;try{const result=await core('tick');if(result.Changed)updateState(result.State);if(result.Notices.length)notify(result.Notices);if(state.Data.Settings.Mode==='bottom'&&main?.isVisible()&&Date.now()>movingUntil)await applyWindow();}catch(e){report(e);}finally{busyTick=false;}},2000);
  }).catch(async error=>{dialog.showErrorBox('FrostTodo 无法启动',String(error.message||error)+'\n现有数据文件已保留。');await quit();});
