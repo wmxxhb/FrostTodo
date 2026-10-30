@@ -12,7 +12,7 @@ namespace FrostTodo {
   public static void Normalize(Preferences p){
    p.TextSize=Math.Max(12,Math.Min(22,p.TextSize));p.TextContrast=Math.Max(50,Math.Min(100,p.TextContrast));p.TextLineGap=Math.Max(0,Math.Min(16,p.TextLineGap));
    if(!new[]{"normal","medium","semibold","bold"}.Contains(p.TextWeight))p.TextWeight="normal";
-   if(!new[]{"sharp","soft","auto","pixel"}.Contains(p.TextRendering))p.TextRendering="sharp";
+   if(!new[]{"desktop","sharp","soft","auto","pixel"}.Contains(p.TextRendering))p.TextRendering="sharp";
    p.TextSpacing=Double.IsNaN(p.TextSpacing)||Double.IsInfinity(p.TextSpacing)?0:Math.Max(0,Math.Min(3,p.TextSpacing));
   }
   public static string SizeKey(double size){return "UiSize"+size.ToString("0.#",CultureInfo.InvariantCulture);}
