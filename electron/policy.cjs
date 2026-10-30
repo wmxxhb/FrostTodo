@@ -1,6 +1,5 @@
 'use strict';
 const path=require('node:path');
-const {fileURLToPath}=require('node:url');
 function assetPath(root,url){
  const parsed=new URL(url);if(parsed.protocol!=='frost:'||parsed.hostname!=='app')throw new Error('Invalid asset origin');
  const relative=decodeURIComponent(parsed.pathname).replace(/^\//,'')||'index.html';
@@ -15,4 +14,21 @@ function safeBounds(saved,displays){
 }
 function countFor(state,view,current){if(view==='none')return -1;if(view==='current')return current;return state.Data.Tasks.filter(t=>view.startsWith('tag:')?!t.Done&&t.Tags.includes(view.slice(4)):state.Views[t.Id]?.includes(view)).length;}
 function transparentFor(p){return p.Opacity<100&&!p.BackgroundImage;}
-module.exports={assetPath,safeBounds,countFor,transparentFor};
+// Electron screen and window coordinates are already in DIPs, including mixed-DPI monitors.
+function dotInArea(bounds,area,snap){
+ const width=bounds.width||52,height=bounds.height||52;
+ const left=area.x+6,right=Math.max(left,area.x+area.width-width-6),top=area.y+6,bottom=Math.max(top,area.y+area.height-height-6);
+ let x=Math.max(left,Math.min(right,Math.round(bounds.x))),y=Math.max(top,Math.min(bottom,Math.round(bounds.y)));
+ if(snap){if(Math.min(Math.abs(x-left),Math.abs(right-x))<=35)x=x-left<=right-x?left:right;if(Math.min(Math.abs(y-top),Math.abs(bottom-y))<=35)y=y-top<=bottom-y?top:bottom;}
+ return {x,y};
+}
+function snapDot(bounds,area){return dotInArea(bounds,area,true);}
+function restoreDot(saved,displays,primary=displays[0]){
+ const x=saved.DotLeft,y=saved.DotTop;
+ const fallback=()=>dotInArea({x:primary.workArea.x+primary.workArea.width-58,y:primary.workArea.y+primary.workArea.height*.6},primary.workArea,false);
+ if(!Number.isFinite(x)||!Number.isFinite(y)||x===-1&&y===-1)return fallback();
+ const overlap=area=>Math.max(0,Math.min(x+52,area.x+area.width)-Math.max(x,area.x))*Math.max(0,Math.min(y+52,area.y+area.height)-Math.max(y,area.y));
+ const best=displays.reduce((a,b)=>overlap(a.workArea)>=overlap(b.workArea)?a:b);
+ return overlap(best.workArea)>0?dotInArea({x,y},best.workArea,false):fallback();
+}
+module.exports={assetPath,safeBounds,countFor,transparentFor,snapDot,restoreDot};

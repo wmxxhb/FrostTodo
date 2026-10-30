@@ -23,7 +23,7 @@ namespace FrostTodo {
    string line;while((line=Console.ReadLine())!=null){object id=null;try{Dictionary<string,object> request=Json.Deserialize<Dictionary<string,object>>(line);id=request["id"];string op=(string)request["op"];object arg=request.ContainsKey("arg")?request["arg"]:null;object result=Dispatch(op,arg);Console.WriteLine(Json.Serialize(new{id=id,ok=true,result=result}));if(op=="close")break;}catch(Exception e){Console.WriteLine(Json.Serialize(new{id=id,ok=false,error=e.Message}));}}
    return 0;
   }
-  static void DesktopDefaults(Preferences p){p.Font="desktop";p.TextSize=16;p.TextWeight="normal";p.TextRendering="desktop";p.TextContrast=100;p.TextSpacing=0;p.TextLineGap=4;}
+  static void DesktopDefaults(Preferences p){DesktopAppearance.ResetText(p);}
   static T ConvertTo<T>(object value){return Json.Deserialize<T>(Json.Serialize(value));}
   static Dictionary<string,object> Map(object arg){return arg as Dictionary<string,object>??new Dictionary<string,object>();}
   static string Str(Dictionary<string,object> arg,string key){return arg.ContainsKey(key)?Convert.ToString(arg[key]):"";}
@@ -44,6 +44,7 @@ namespace FrostTodo {
    if(op=="close")return true;
    if(op=="native"){ElectronNative.Apply(new IntPtr(Int64.Parse(Str(a,"handle"))),Str(a,"mode"),Str(a,"tint"),Convert.ToInt32(a["opacity"]));return true;}
    if(op=="export")return store.Encode(data);
+   if(op=="resetAppearance")return Change(delegate{DesktopAppearance.Reset(data.Settings);},false);
    if(op=="saveTask")return Change(delegate{
     Todo draft=ConvertTo<Todo>(a["task"]),baseline=a.ContainsKey("baseline")&&a["baseline"]!=null?ConvertTo<Todo>(a["baseline"]):null;
     Todo old=data.Tasks.FirstOrDefault(t=>t.Id==draft.Id);bool editing=baseline!=null;if(editing&&old==null)throw new InvalidOperationException("任务已被删除。");

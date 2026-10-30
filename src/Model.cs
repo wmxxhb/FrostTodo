@@ -16,7 +16,7 @@ namespace FrostTodo {
  public class Preferences {
   public string GptTheme {get;set;}
   public string BackgroundImage {get;set;} public string BackgroundImageName {get;set;}
-  public int TextSize {get;set;} public string TextWeight {get;set;} public string TextRendering {get;set;} public int TextContrast {get;set;} public double TextSpacing {get;set;} public int TextLineGap {get;set;}
+  public int TextSize {get;set;} public int TabTextSize {get;set;} public string TextWeight {get;set;} public string TextRendering {get;set;} public int TextContrast {get;set;} public double TextSpacing {get;set;} public int TextLineGap {get;set;}
   public string Tint {get;set;} public string Foreground {get;set;} public string Font {get;set;} public int Opacity {get;set;} public string Density {get;set;} public string Mode {get;set;}
   public string Collapse {get;set;} public string Count {get;set;} public double Width {get;set;} public double Height {get;set;}
   public double Left {get;set;} public double Top {get;set;} public double DotLeft {get;set;} public double DotTop {get;set;}
@@ -37,7 +37,7 @@ namespace FrostTodo {
    }
    Themes=Themes.Where(x=>!String.IsNullOrWhiteSpace(x)).Distinct().ToList();
    Preferences p=Settings; if(p.QuickTags==null)p.QuickTags=new List<string>();if(p.QuickViews==null)p.QuickViews=new List<string>{"urgent","important"};p.QuickViews=p.QuickViews.Where(x=>new[]{"urgent","very-urgent","important","very-important"}.Contains(x)).Distinct().ToList();if(!FontCatalog.Keys.Contains(p.Font))p.Font="system";
-   TextAppearance.Normalize(p);if(!new[]{"light","dark","system","custom"}.Contains(p.GptTheme))p.GptTheme="light";
+   TextAppearance.Normalize(p);if(p.TabTextSize!=0)p.TabTextSize=Math.Max(10,Math.Min(22,p.TabTextSize));if(!new[]{"light","dark","system","custom"}.Contains(p.GptTheme))p.GptTheme="light";
    if(!p.LightBackdropV1){p.Tint="#F3F6FA";p.LightBackdropV1=true;}
    p.Opacity=Math.Max(10,Math.Min(UiVariant.MaximumOpacity,p.Opacity));if(!new[]{"top","normal","bottom"}.Contains(p.Mode))p.Mode="top";
    if(!new[]{"dot","hidden"}.Contains(p.Collapse))p.Collapse="dot";if(!new[]{"compact","balanced","spacious"}.Contains(p.Density))p.Density="balanced";

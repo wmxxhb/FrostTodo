@@ -4,5 +4,6 @@ function refresh(state){const p=state.Data.Settings;let n;if(p.Count==='none')n=
 window.frost.onState(refresh);window.frost.call('snapshot').then(refresh);
 button.addEventListener('pointerdown',event=>{if(event.button!==0)return;drag={x:event.screenX,y:event.screenY,offsetX:event.clientX,offsetY:event.clientY,moved:false};button.setPointerCapture(event.pointerId);});
 button.addEventListener('pointermove',event=>{if(!drag)return;if(Math.hypot(event.screenX-drag.x,event.screenY-drag.y)>4)drag.moved=true;if(drag.moved&&performance.now()-lastMove>16){lastMove=performance.now();window.frost.call('dotMove',drag).catch(()=>{});}});
-button.addEventListener('pointerup',()=>{if(!drag)return;const saved=drag;drag=null;if(saved.moved)window.frost.call('dotMove',{...saved,end:true});else window.frost.call('restore');});
-button.addEventListener('pointercancel',()=>drag=null);button.addEventListener('contextmenu',event=>{event.preventDefault();window.frost.call('dotMenu');});button.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')window.frost.call('restore');});
+function finishDrag(cancelled){if(!drag)return;const saved=drag;drag=null;if(saved.moved)window.frost.call('dotMove',{...saved,end:true}).catch(()=>{});else if(!cancelled)window.frost.call('restore');}
+button.addEventListener('pointerup',()=>finishDrag(false));button.addEventListener('pointercancel',()=>finishDrag(true));button.addEventListener('lostpointercapture',()=>finishDrag(true));
+button.addEventListener('contextmenu',event=>{event.preventDefault();window.frost.call('dotMenu');});button.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')window.frost.call('restore');});

@@ -30,3 +30,17 @@ test('first migration copies a profile without changing source or reseeding late
  const copy=new Bridge(exe,destination,seed);try{let state=await copy.call('snapshot');assert.equal(state.Data.Tasks[0].Id,'source');assert.equal(state.Data.Settings.Font,'desktop');assert.equal(state.Data.Settings.TextRendering,'desktop');assert.equal(state.Data.Settings.Tint,'#7B8AD7');assert.equal(await fs.readFile(path.join(seed,'tasks.json'),'utf8'),source);await copy.call('delete',{id:'source'});}finally{await copy.close();}
  const again=new Bridge(exe,destination,seed);try{assert.equal((await again.call('snapshot')).Data.Tasks.length,0);assert.equal(await fs.readFile(path.join(seed,'tasks.json'),'utf8'),source);}finally{await again.close();}
 });
+test('one-click desktop defaults persist while retaining tasks, tags and desktop behavior',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'frost-defaults-test-')),bridge=new Bridge(exe,root);
+ try{
+  const initial=await bridge.call('snapshot');await bridge.call('saveTask',{task:emptyTask('keep','保留任务')});await bridge.call('tagAdd',{tag:'保留标签'});
+  const image=Buffer.alloc(58);image.write('BM');image.writeUInt32LE(58,2);image.writeUInt32LE(54,10);image.writeUInt32LE(40,14);image.writeInt32LE(1,18);image.writeInt32LE(1,22);image.writeUInt16LE(1,26);image.writeUInt16LE(24,28);image[54]=70;image[55]=90;image[56]=120;
+  const file=path.join(root,'background.bmp');await fs.writeFile(file,image);let state=await bridge.call('background',{path:file});assert.ok(state.Data.Settings.BackgroundImage.length);
+  state=await bridge.call('settings',{Font:'cubic',TextSize:22,TabTextSize:20,GptTheme:'custom',Tint:'#7B8AD7',Foreground:'#FFC44F',Opacity:42,Density:'compact',Mode:'bottom',Left:123,Top:234,DotLeft:-1300,DotTop:210,QuickViews:['very-important']});
+  assert.equal(state.Data.Settings.TabTextSize,20);const saved=JSON.parse(await bridge.call('export'));assert.equal(saved.Settings.TabTextSize,20);
+  state=await bridge.call('resetAppearance');const p=state.Data.Settings;
+  for(const key of ['Font','TextSize','TabTextSize','TextWeight','TextRendering','TextContrast','TextSpacing','TextLineGap','GptTheme','Tint','Foreground','Opacity','Density','BackgroundImage','BackgroundImageName'])assert.equal(p[key],initial.Data.Settings[key],key);
+  assert.equal(state.Data.Tasks[0].Title,'保留任务');assert.ok(state.Data.Themes.includes('保留标签'));assert.equal(p.Mode,'bottom');assert.equal(p.Left,123);assert.equal(p.Top,234);assert.equal(p.DotLeft,-1300);assert.deepEqual(p.QuickViews,['very-important']);
+  await bridge.close();const reopened=new Bridge(exe,root);try{const restored=await reopened.call('snapshot');assert.equal(restored.Data.Settings.TabTextSize,0);assert.equal(restored.Data.Settings.Font,'desktop');assert.equal(restored.Data.Tasks.length,1);}finally{await reopened.close();}
+ }finally{await bridge.close();}
+});

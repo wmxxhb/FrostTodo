@@ -1,7 +1,7 @@
 'use strict';
 const {app,BrowserWindow,Tray,Menu,nativeImage,ipcMain,dialog,globalShortcut,screen,protocol,net,nativeTheme,Notification,session}=require('electron');
 const path=require('node:path'),fs=require('node:fs'),{pathToFileURL}=require('node:url');
-const {Bridge}=require('./bridge.cjs'),{assetPath,safeBounds,countFor,transparentFor}=require('./policy.cjs');
+const {Bridge}=require('./bridge.cjs'),{assetPath,safeBounds,countFor,transparentFor,snapDot,restoreDot}=require('./policy.cjs');
 protocol.registerSchemesAsPrivileged([{scheme:'frost',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 const root=__dirname,assetRoot=app.isPackaged?root:path.join(root,'..'),local=process.env.LOCALAPPDATA||app.getPath('userData');
 const explicit=process.argv.indexOf('--data-dir');
@@ -50,9 +50,7 @@ function show(){collapsed=false;if(dot&&!dot.isDestroyed())dot.hide();if(main){i
 async function collapse(){collapsed=true;main.hide();if(state.Data.Settings.Collapse==='dot'){await createDot();dot.showInactive();}else if(dot)dot.hide();}
 async function createDot(){
  if(dot&&!dot.isDestroyed()){sendState();return;}
- const p=state.Data.Settings,a=screen.getPrimaryDisplay().workArea;
- const b=safeBounds({Width:300,Height:340,Left:p.DotLeft,Top:p.DotTop},screen.getAllDisplays());
- const x=p.DotLeft<0?a.x+a.width-68:b.x,y=p.DotTop<0?a.y+Math.round(a.height*.6):b.y;
+ const p=state.Data.Settings,{x,y}=restoreDot(p,screen.getAllDisplays(),screen.getPrimaryDisplay());
  dot=new BrowserWindow({x,y,width:52,height:52,show:false,frame:false,transparent:true,roundedCorners:false,resizable:false,skipTaskbar:true,alwaysOnTop:true,hasShadow:false,webPreferences:{preload:path.join(root,'preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false}});protect(dot);
  dot.on('close',e=>{if(!quitting){e.preventDefault();dot.hide();}});await dot.loadURL('frost://app/dot.html');sendState();
 }
@@ -81,12 +79,18 @@ async function action(event,name,arg){
  if(name==='snapshot')return {...state,Dark:nativeTheme.shouldUseDarkColors,Hotkey:hotkey};
  if(taskOps.has(name)){updateState(await core(name,arg));return state;}
  if(name==='settings')return settings(arg);
+ if(name==='resetAppearance'){updateState(await core('resetAppearance'));setTimeout(()=>refreshWindow().catch(report),120);return state;}
  if(name==='route'){route=['main','edit','appearance','settings','tags','filter'].includes(arg)?arg:'main';return true;}
  if(name==='currentCount'){currentCount=Math.max(0,Math.min(20000,Number(arg)||0));if(dot&&!dot.isDestroyed())dot.webContents.send('frost:state',{...state,Dark:nativeTheme.shouldUseDarkColors,CurrentCount:currentCount});return true;}
  if(name==='menu'){Menu.buildFromTemplate(menuTemplate()).popup({window:main});return true;}
  if(name==='collapse'){await collapse();return true;}if(name==='restore'){show();return true;}if(name==='quit'){setImmediate(quit);return true;}
  if(name==='dotMenu'){const p=state.Data.Settings;Menu.buildFromTemplate([{label:'展开待办',click:show},...['all','today','overdue','important','urgent','current','none'].map((value,i)=>({label:['所有待办','今日待办','逾期待办','重要待办','紧急待办','当前筛选','不显示数字'][i],type:'radio',checked:p.Count===value,click:()=>settings({Count:value}).catch(report)})),{label:'完全隐藏',click:()=>dot.hide()},{label:'退出',click:()=>command('quit')}]).popup({window:dot});return true;}
- if(name==='dotMove'){if(!dot)return true;const pos=screen.getCursorScreenPoint(),x=Math.round(pos.x-Math.max(0,Math.min(52,Number(arg?.offsetX)||26))),y=Math.round(pos.y-Math.max(0,Math.min(52,Number(arg?.offsetY)||26)));dot.setPosition(x,y);if(arg?.end)updateState(await core('settings',{DotLeft:x,DotTop:y}));return true;}
+ if(name==='dotMove'){
+  if(!dot)return true;const pos=screen.getCursorScreenPoint(),offset=key=>Number.isFinite(arg?.[key])?Math.max(0,Math.min(52,arg[key])):26;
+  let x=Math.round(pos.x-offset('offsetX')),y=Math.round(pos.y-offset('offsetY'));
+  if(arg?.end)({x,y}=snapDot({x,y,width:52,height:52},screen.getDisplayNearestPoint(pos).workArea));
+  dot.setPosition(x,y);if(arg?.end)updateState(await core('settings',{DotLeft:x,DotTop:y}));return true;
+ }
  if(name==='background'){
   if(arg?.remove){updateState(await core('background',{path:''}));}else{const result=await dialog.showOpenDialog(main,{properties:['openFile'],filters:[{name:'背景图片',extensions:['png','jpg','jpeg','bmp']}]});if(result.canceled)return state;updateState(await core('background',{path:result.filePaths[0]}));}setTimeout(()=>refreshWindow().catch(report),120);return state;
  }

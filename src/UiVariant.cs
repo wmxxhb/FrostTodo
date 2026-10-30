@@ -16,7 +16,7 @@ namespace FrostTodo {
   public static int MaximumOpacity{get{return IsGpt?100:95;}}
   public static void Defaults(Preferences p){if(!IsGpt)return;p.Tint="#FFFFFF";p.Foreground="auto";p.Opacity=100;p.LightBackdropV1=true;p.Width=420;p.Height=640;p.Font="segoe";p.TextContrast=100;
 #if CHROMIUM_CORE
-   p.Font="desktop";p.TextSize=16;p.TextRendering="desktop";
+   DesktopAppearance.Reset(p);
 #endif
   }
   public static AppData LoadProfile(Store destination,string seedDirectory){

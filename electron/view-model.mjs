@@ -4,6 +4,7 @@ export const fontStacks={desktop:'-apple-system, BlinkMacSystemFont, "Segoe UI",
 export const colors=[['雾白','#F3F6FA'],['灰蓝','#D8E6F2'],['浅沙','#F3E8D9'],['鼠尾草','#DFE8DD'],['长春花蓝','#7B8AD7'],['可可棕','#6D483B'],['苔青色','#465C47'],['浅松色','#FFC44F']];
 export const repeats=[['none','不重复'],['daily','每天'],['weekdays','工作日'],['weekly','每周'],['monthly','每月'],['custom','指定星期']];
 export const weights={normal:400,medium:500,semibold:600,bold:700};
+export function tabFontSize(p){return p.TabTextSize>0?p.TabTextSize:p.TextSize*.875;}
 export function visible(state,view,filter){return state.Data.Tasks.filter(t=>{
  const inView=view.startsWith('tag:')?!t.Done&&t.Tags.includes(view.slice(4)):state.Views[t.Id]?.includes(view);
  return inView&&(!filter.tags.length||t.Tags.some(tag=>filter.tags.includes(tag)))&&(!filter.urgency.length||filter.urgency.includes(t.Urgency))&&(!filter.importance.length||filter.importance.includes(t.Importance));

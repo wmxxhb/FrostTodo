@@ -1,7 +1,7 @@
 {
   "name": "frosttodo-electron",
   "productName": "FrostTodo Chromium",
-  "version": "0.5.0-gpt.1",
+  "version": "0.5.0-gpt.2",
   "private": true,
   "description": "FrostTodo Chromium desktop edition",
   "author": "wmxxhb",
