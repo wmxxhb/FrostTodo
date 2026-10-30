@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/openai/apps-sdk-ui",
+  "revision": "0f00143c7a639906f1621fe58e1b6be7b5bea46d",
+  "version": "0.2.2",
+  "license": "OpenAI-Apps-SDK-UI-LICENSE.txt",
+  "used": [
+    "neutral semantic color tokens",
+    "spacing and typography scales",
+    "selected SVG icon paths"
+  ],
+  "implementation": "Native WPF adaptation; React runtime is not included."
+}

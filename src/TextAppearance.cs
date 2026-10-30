@@ -7,7 +7,7 @@ using System.Windows.Media;
 
 namespace FrostTodo {
  public static class TextAppearance {
-  public static void Reset(Preferences p){p.Font="system";p.TextSize=15;p.TextWeight="normal";p.TextRendering="sharp";p.TextContrast=76;p.TextSpacing=0;p.TextLineGap=4;}
+  public static void Reset(Preferences p){p.Font=UiVariant.IsGpt?"segoe":"system";p.TextSize=15;p.TextWeight="normal";p.TextRendering="sharp";p.TextContrast=UiVariant.IsGpt?100:76;p.TextSpacing=0;p.TextLineGap=4;}
   public static void Recommended(Preferences p){Reset(p);p.Font="yahei";p.TextSize=16;p.TextWeight="medium";p.TextContrast=100;p.TextLineGap=6;}
   public static void Normalize(Preferences p){
    p.TextSize=Math.Max(12,Math.Min(22,p.TextSize));p.TextContrast=Math.Max(50,Math.Min(100,p.TextContrast));p.TextLineGap=Math.Max(0,Math.Min(16,p.TextLineGap));
@@ -25,7 +25,7 @@ namespace FrostTodo {
    resources["UiFormatting"]=p.TextRendering=="soft"?TextFormattingMode.Ideal:TextFormattingMode.Display;
    resources["UiRendering"]=p.TextRendering=="auto"?TextRenderingMode.Auto:p.TextRendering=="pixel"?TextRenderingMode.Aliased:TextRenderingMode.Grayscale;
    resources["TaskCharacterSpacing"]=p.TextSpacing;resources["TaskMetaGap"]=new Thickness(0,p.TextLineGap,0,0);resources["TaskTextPadding"]=new Thickness(1,6+Math.Max(0,p.TextLineGap-4)/2.0,2,6+Math.Max(0,p.TextLineGap-4)/2.0);
-   resources["UiTabsHeight"]=Math.Max(34,Math.Ceiling(11.5*p.TextSize/15.0*1.5)+16);resources["UiHeaderHeight"]=Math.Max(25,Math.Ceiling(p.TextSize*1.5));
+   resources["UiTabsHeight"]=Math.Max(34,Math.Ceiling(11.5*p.TextSize/15.0*1.5)+16);resources["UiHeaderHeight"]=Math.Max(25,Math.Ceiling(p.TextSize*1.5));if(UiVariant.IsGpt)GptTheme.Publish(p);
   }
   public static void Configure(FrameworkElement element){element.SetResourceReference(TextOptions.TextFormattingModeProperty,"UiFormatting");element.SetResourceReference(TextOptions.TextRenderingModeProperty,"UiRendering");TextOptions.SetTextHintingMode(element,TextHintingMode.Fixed);}
   public static SpacedTitle Title(string text){SpacedTitle block=new SpacedTitle{Text=text,ToolTip=text,Focusable=false};BindSize(block,15);block.SetResourceReference(Control.FontFamilyProperty,"UiFont");block.SetResourceReference(Control.FontWeightProperty,"UiWeight");block.SetResourceReference(Control.ForegroundProperty,"Ink");block.SetResourceReference(SpacedTitle.SpacingProperty,"TaskCharacterSpacing");Configure(block);return block;}

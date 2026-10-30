@@ -20,12 +20,12 @@ namespace FrostTodo {
   }
   void Open(){
    DateTime now=DateTime.Now;string current=Value;int hour=Logic.IsTime(current)?Int32.Parse(current.Substring(0,2)):now.Hour,minute=Logic.IsTime(current)?Int32.Parse(current.Substring(3,2)):now.Minute;
-   StackPanel panel=new StackPanel{Margin=new Thickness(12)};panel.Resources["Ink"]=Ui.Brush("#263344");panel.Resources["Muted"]=Ui.Brush("#66778B");panel.Resources["Field"]=Ui.Brush("#FFFFFFFF");
+   StackPanel panel=new StackPanel{Margin=new Thickness(12)};if(!UiVariant.IsGpt){panel.Resources["Ink"]=Ui.Brush("#263344");panel.Resources["Muted"]=Ui.Brush("#66778B");panel.Resources["Field"]=Ui.Brush("#FFFFFFFF");}
    string[] hours=Enumerable.Range(0,24).Select(i=>i.ToString("00")).ToArray(),minutes=Enumerable.Range(0,60).Select(i=>i.ToString("00")).ToArray();
    Grid selectors=new Grid();selectors.ColumnDefinitions.Add(new ColumnDefinition());selectors.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(12)});selectors.ColumnDefinitions.Add(new ColumnDefinition());
    ComboBox h=Ui.Select(hours,hours,hour.ToString("00"),null),m=Ui.Select(minutes,minutes,minute.ToString("00"),null);AutomationProperties.SetName(h,"小时");AutomationProperties.SetName(m,"分钟");selectors.Children.Add(h);Grid.SetColumn(m,2);selectors.Children.Add(m);panel.Children.Add(selectors);
    Grid buttons=new Grid{Margin=new Thickness(0,10,0,0)};Button clear=Ui.Button("清除",delegate{Value="";popup.IsOpen=false;}),done=Ui.Button("确定",delegate{Value=Ui.Value(h)+":"+Ui.Value(m);popup.IsOpen=false;input.Focus();});clear.HorizontalAlignment=HorizontalAlignment.Left;done.HorizontalAlignment=HorizontalAlignment.Right;buttons.Children.Add(clear);buttons.Children.Add(done);panel.Children.Add(buttons);
-   popup.Child=new Border{Background=Ui.Brush("#F2F5F9"),BorderBrush=Ui.Brush("#B9C8D8"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(12),Width=182,Child=panel};popup.IsOpen=true;
+   popup.Child=new Border{Background=Ui.Brush("#F2F5F9"),BorderBrush=Ui.Brush("#B9C8D8"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(12),Width=182,Child=panel};GptTheme.Popup((Border)popup.Child);popup.IsOpen=true;
   }
  }
 }

@@ -14,13 +14,14 @@ namespace FrostTodo {
   public Todo Copy(){return new Todo{Id=Id,Title=Title,Tags=new List<string>(Tags),Due=Due,Time=Time,Urgency=Urgency,Importance=Importance,Reminder=Reminder,ReminderFired=ReminderFired,Repeat=Repeat,Anchor=Anchor,RepeatDue=RepeatDue,SnoozedUntil=SnoozedUntil,SnoozedFor=SnoozedFor,WeekDays=new List<int>(WeekDays),Done=Done,Created=Created};}
  }
  public class Preferences {
+  public string GptTheme {get;set;}
   public string BackgroundImage {get;set;} public string BackgroundImageName {get;set;}
   public int TextSize {get;set;} public string TextWeight {get;set;} public string TextRendering {get;set;} public int TextContrast {get;set;} public double TextSpacing {get;set;} public int TextLineGap {get;set;}
   public string Tint {get;set;} public string Foreground {get;set;} public string Font {get;set;} public int Opacity {get;set;} public string Density {get;set;} public string Mode {get;set;}
   public string Collapse {get;set;} public string Count {get;set;} public double Width {get;set;} public double Height {get;set;}
   public double Left {get;set;} public double Top {get;set;} public double DotLeft {get;set;} public double DotTop {get;set;}
   public List<string> QuickTags {get;set;} public List<string> QuickViews {get;set;} public bool QuickTagsAll {get;set;} public bool LightBackdropV1 {get;set;}
-  public Preferences(){TextAppearance.Reset(this);Tint="#F3F6FA";Foreground="auto";Font="system";Opacity=55;Density="balanced";Mode="top";Collapse="dot";Count="all";Width=390;Height=590;Left=-1;Top=-1;DotLeft=-1;DotTop=-1;QuickTags=new List<string>();QuickViews=new List<string>{"urgent","important"};QuickTagsAll=true;}
+  public Preferences(){GptTheme="light";TextAppearance.Reset(this);Tint="#F3F6FA";Foreground="auto";Font="system";Opacity=55;Density="balanced";Mode="top";Collapse="dot";Count="all";Width=390;Height=590;Left=-1;Top=-1;DotLeft=-1;DotTop=-1;QuickTags=new List<string>();QuickViews=new List<string>{"urgent","important"};QuickTagsAll=true;UiVariant.Defaults(this);}
  }
  public class AppData {
   public int Version {get;set;} public List<Todo> Tasks {get;set;} public List<string> Themes {get;set;} public Preferences Settings {get;set;}
@@ -36,9 +37,9 @@ namespace FrostTodo {
    }
    Themes=Themes.Where(x=>!String.IsNullOrWhiteSpace(x)).Distinct().ToList();
    Preferences p=Settings; if(p.QuickTags==null)p.QuickTags=new List<string>();if(p.QuickViews==null)p.QuickViews=new List<string>{"urgent","important"};p.QuickViews=p.QuickViews.Where(x=>new[]{"urgent","very-urgent","important","very-important"}.Contains(x)).Distinct().ToList();if(!FontCatalog.Keys.Contains(p.Font))p.Font="system";
-   TextAppearance.Normalize(p);
+   TextAppearance.Normalize(p);if(!new[]{"light","dark","system","custom"}.Contains(p.GptTheme))p.GptTheme="light";
    if(!p.LightBackdropV1){p.Tint="#F3F6FA";p.LightBackdropV1=true;}
-   p.Opacity=Math.Max(10,Math.Min(95,p.Opacity));if(!new[]{"top","normal","bottom"}.Contains(p.Mode))p.Mode="top";
+   p.Opacity=Math.Max(10,Math.Min(UiVariant.MaximumOpacity,p.Opacity));if(!new[]{"top","normal","bottom"}.Contains(p.Mode))p.Mode="top";
    if(!new[]{"dot","hidden"}.Contains(p.Collapse))p.Collapse="dot";if(!new[]{"compact","balanced","spacious"}.Contains(p.Density))p.Density="balanced";
    if(String.IsNullOrEmpty(p.Count))p.Count="all";if(String.IsNullOrEmpty(p.Tint)||!System.Text.RegularExpressions.Regex.IsMatch(p.Tint,"^#[0-9a-fA-F]{6}$"))p.Tint="#D8E6F2";
    if(String.IsNullOrEmpty(p.Foreground)||(p.Foreground!="auto"&&!System.Text.RegularExpressions.Regex.IsMatch(p.Foreground,"^#[0-9a-fA-F]{6}$")))p.Foreground="auto";
